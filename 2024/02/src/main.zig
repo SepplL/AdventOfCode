@@ -21,7 +21,8 @@ pub fn main() !void {
     // create array for both colunms and allocate buffer
     // print("file stats: {}", .{stat});
     // assume knowledge now: how to count lines in files?
-    var safeRows: u16 = 0;
+    var safeRows1: u16 = 0;
+    var safeRows2: u16 = 0;
     var rows = std.mem.splitAny(u8, buffer, "\n");
     while (rows.next()) |row| {
         var currentRow: [10]i16 = undefined;
@@ -41,65 +42,126 @@ pub fn main() !void {
         }
         // print("current row {any} \n", .{currentRow});
         // row constructed properly. Now check for conditions and update safeRows.
+        // part 1
+        const safety1 = isSafe(&currentRow);
+        // part 2
+        const safety2 = isDampenedSafe(&currentRow);
 
-        var sign: i8 = -1;
-        var signSwaps: u8 = 0;
-        var index: u8 = 0;
-        var deltaViolation: bool = false;
-        // increasing vs decreasing
-        // 0 < i - j < 3
-
-        for (currentRow) |number| {
-            // check for non 0 valid entries. Only evaluate actual numbers
-            if (number <= 0) {
-                break;
-            }
-
-            if (index == 0) {
-                index += 1;
-                continue;
-            }
-
-            const deltaNum = number - currentRow[index - 1];
-            // print("number {d} and previous number {d} \n", .{ number, currentRow[index - 1] });
-            if (deltaNum * sign < 0) {
-                sign *= -1;
-                signSwaps += 1;
-            }
-
-            if (@abs(deltaNum) == 0 or @abs(deltaNum) > 3) {
-                deltaViolation = true;
-            }
-            // print("delta: {d} and sign swap? {d} \n", .{ deltaNum, signSwaps });
-            index += 1;
-        }
         // print("current row {any} \n", .{currentRow});
-        if (deltaViolation == true) {
-            continue;
-        } else {
-            if (sign == -1 and signSwaps == 0) {
-                safeRows += 1;
-                // print("safe row found! \n", .{});
-            }
-            if (sign == 1 and signSwaps == 1) {
-                safeRows += 1;
-                // print("safe row found! \n", .{});
-            }
+        if (safety1) {
+            safeRows1 += 1;
+        }
+        if (safety2) {
+            safeRows2 += 1;
         }
     }
-    print("Number of safe rows: {d}", .{safeRows});
+    // ISSUE: counting also last 0, 0, 0 row - error from importing. Fix later.
+    print("Number of safe rows in part 1: {d} \n", .{safeRows1 - 1});
+    print("Number of safe rows in part 1: {d} \n", .{safeRows2 - 1});
 }
 
-test "example test" {
-    // const expect = std.testing.expect;
-    const input = [6][5]u8{
-        [_]u8{ 7, 6, 4, 2, 1 },
-        [_]u8{ 1, 2, 7, 8, 9 },
-        [_]u8{ 9, 7, 6, 2, 1 },
-        [_]u8{ 1, 3, 2, 4, 5 },
-        [_]u8{ 8, 6, 4, 4, 1 },
-        [_]u8{ 1, 3, 6, 7, 9 },
+fn isSafe(list: []const i16) bool {
+    var first: bool = true;
+    var last: i16 = 0;
+    var order: i16 = 0;
+    // increasing vs decreasing
+    // 0 < i - j < 3
+
+    for (list) |number| {
+        // check for non 0 valid entries. Only evaluate actual numbers
+        if (number <= 0) {
+            break;
+        }
+
+        if (first) {
+            first = false;
+        } else {
+            const diff = last - number;
+            if (diff == 0 or diff < -3 or diff > 3) {
+                return false;
+            }
+            if (order == 0) {
+                order = diff;
+            } else {
+                if ((order < 0 and diff > 0) or (order > 0 and diff < 0)) {
+                    return false;
+                }
+            }
+        }
+        last = number;
+    }
+    return true;
+}
+
+fn isDampenedSafe(list: []const i16) bool {
+    // use part 2 dampening
+    var combined: [10]i16 = undefined;
+
+    if (isSafe(list)) {
+        return true;
+    } else {
+        var index: u8 = 0;
+        while (index < list.len) {
+            // remove index from list and test on remaining list:
+            // const dampenedList = list[0..index] ++ list[index..list.len];
+            const newPart1 = list[0..index];
+            const newPart2 = list[index + 1 .. list.len];
+            @memcpy(combined[0..newPart1.len], newPart1);
+            @memcpy(combined[newPart1.len .. list.len - 1], newPart2);
+            // print("old list: {any} \n", .{list});
+            // print("new list 1: {any} \n", .{newPart1});
+            // print("new list 2: {any} \n", .{newPart2});
+            // print("concatenated: {any} \n", .{combined[0 .. list.len - 1]});
+            if (isSafe(combined[0 .. list.len - 1])) {
+                return true;
+            } else {
+                index += 1;
+            }
+        }
+        return false;
+    }
+}
+
+test "part1 test" {
+    const expectEqual = std.testing.expectEqual;
+    const input = [6][5]i16{
+        [_]i16{ 7, 6, 4, 2, 1 },
+        [_]i16{ 1, 2, 7, 8, 9 },
+        [_]i16{ 9, 7, 6, 2, 1 },
+        [_]i16{ 1, 3, 2, 4, 5 },
+        [_]i16{ 8, 6, 4, 4, 1 },
+        [_]i16{ 1, 3, 6, 7, 9 },
     };
-    // try expect(safeTesting(input), 2);
-    print("Loaded input: {any}", .{input});
+
+    var part1Safe: u8 = 0;
+    for (&input) |row| {
+        if (isSafe(&row)) {
+            part1Safe += 1;
+        }
+    }
+
+    try expectEqual(2, part1Safe);
+    print("Loaded input: {any} \n", .{input});
+}
+
+test "part2 test" {
+    const expectEqual = std.testing.expectEqual;
+    const input = [6][5]i16{
+        [_]i16{ 7, 6, 4, 2, 1 },
+        [_]i16{ 1, 2, 7, 8, 9 },
+        [_]i16{ 9, 7, 6, 2, 1 },
+        [_]i16{ 1, 3, 2, 4, 5 },
+        [_]i16{ 8, 6, 4, 4, 1 },
+        [_]i16{ 1, 3, 6, 7, 9 },
+    };
+
+    var part2Safe: u8 = 0;
+    for (&input) |row| {
+        if (isDampenedSafe(&row)) {
+            part2Safe += 1;
+        }
+    }
+
+    try expectEqual(4, part2Safe);
+    // print("Loaded input: {any} \n", .{input});
 }
