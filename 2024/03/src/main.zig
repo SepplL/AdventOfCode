@@ -24,6 +24,7 @@ pub fn main() !void {
 }
 
 fn parseMuls(input: []const u8) !i64 {
+    var mulEnabled: bool = true;
     var position: u32 = 0;
     var result: i64 = 0;
     while (position < input.len - 4) {
@@ -49,7 +50,7 @@ fn parseMuls(input: []const u8) !i64 {
                             position += 1;
                         }
                         const num2 = try std.fmt.parseInt(i64, input[num2start..position], 10);
-                        if (input[position] == ')') {
+                        if (input[position] == ')' and mulEnabled) {
                             position += 1;
                             // print("multiplication: {s} \n", .{input[num1start - 4 .. position]});
                             // print("parsed num1: {d} \t", .{num1});
@@ -60,6 +61,12 @@ fn parseMuls(input: []const u8) !i64 {
                     }
                 }
             }
+        } else if (eql(u8, input[position .. position + 4], "do()")) {
+            mulEnabled = true;
+            position += 4;
+        } else if (eql(u8, input[position .. position + 7], "don't()")) {
+            mulEnabled = false;
+            position += 7;
         } else {
             position += 1;
         }
@@ -72,4 +79,11 @@ test "test part 1" {
     print("Working on input: {s} \n", .{input});
 
     try std.testing.expectEqual(161, try parseMuls(input));
+}
+
+test "test part 2" {
+    const input: []const u8 = "xmul(2,4)&mul[3,7]!^don't()_mul(5,5)+mul(32,64](mul(11,8)undo()?mul(8,5))";
+    print("Working on input: {s} \n", .{input});
+
+    try std.testing.expectEqual(48, try parseMuls(input));
 }
