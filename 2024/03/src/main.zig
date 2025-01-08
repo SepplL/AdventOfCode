@@ -1,24 +1,75 @@
 const std = @import("std");
+const eql = std.mem.eql;
+const print = std.debug.print;
 
 pub fn main() !void {
-    // Prints to stderr (it's a shortcut based on `std.io.getStdErr()`)
-    std.debug.print("All your {s} are belong to us.\n", .{"codebase"});
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    const allocator = gpa.allocator();
+    defer {
+        _ = gpa.deinit();
+    }
 
-    // stdout is for the actual output of your application, for example if you
-    // are implementing gzip, then only the compressed bytes should be sent to
-    // stdout, not any debugging messages.
-    const stdout_file = std.io.getStdOut().writer();
-    var bw = std.io.bufferedWriter(stdout_file);
-    const stdout = bw.writer();
+    // Open the file
+    const file = try std.fs.cwd().openFile("input.txt", .{});
+    defer file.close();
 
-    try stdout.print("Run `zig build test` to run the tests.\n", .{});
+    // Read file into buffer
+    const stat = try file.stat();
+    const buffer = try file.readToEndAlloc(allocator, stat.size);
+    defer allocator.free(buffer);
 
-    try bw.flush(); // don't forget to flush!
+    // print("Buffer {s}", .{buffer});
+    const result = try parseMuls(buffer);
+    print("The parsed result is: {d} \n", .{result});
 }
 
-test "simple test" {
-    var list = std.ArrayList(i32).init(std.testing.allocator);
-    defer list.deinit(); // try commenting this out and see if zig detects the memory leak!
-    try list.append(42);
-    try std.testing.expectEqual(@as(i32, 42), list.pop());
+fn parseMuls(input: []const u8) !i64 {
+    var position: u32 = 0;
+    var result: i64 = 0;
+    while (position < input.len - 4) {
+        if (eql(u8, input[position .. position + 4], "mul(")) {
+            position += 4;
+
+            // parse number 1
+            if (input[position] >= '0' and input[position] <= '9') {
+                const num1start = position;
+                position += 1;
+                while (input[position] >= '0' and input[position] <= '9') {
+                    position += 1;
+                }
+                const num1 = try std.fmt.parseInt(i64, input[num1start..position], 10);
+                if (input[position] == ',') {
+                    position += 1;
+
+                    // parse number 2
+                    if (input[position] >= '0' and input[position] <= '9') {
+                        const num2start = position;
+                        position += 1;
+                        while (input[position] >= '0' and input[position] <= '9') {
+                            position += 1;
+                        }
+                        const num2 = try std.fmt.parseInt(i64, input[num2start..position], 10);
+                        if (input[position] == ')') {
+                            position += 1;
+                            // print("multiplication: {s} \n", .{input[num1start - 4 .. position]});
+                            // print("parsed num1: {d} \t", .{num1});
+                            // print("parsed num2: {d} \n", .{num2});
+                            // print("********** \n", .{});
+                            result += num1 * num2;
+                        }
+                    }
+                }
+            }
+        } else {
+            position += 1;
+        }
+    }
+    return result;
+}
+
+test "test part 1" {
+    const input: []const u8 = "xmul(2,4)%&mul[3,7]!@^do_not_mul(5,5)+mul(32,64]then(mul(11,8)mul(8,5))";
+    print("Working on input: {s} \n", .{input});
+
+    try std.testing.expectEqual(161, try parseMuls(input));
 }
