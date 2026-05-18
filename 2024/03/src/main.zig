@@ -19,11 +19,14 @@ pub fn main() !void {
     defer allocator.free(buffer);
 
     // print("Buffer {s}", .{buffer});
-    const result = try parseMuls(buffer);
-    print("The parsed result is: {d} \n", .{result});
+    const result1 = try parseMuls(buffer, false);
+    print("The parsed result is: {d} with mul Do's disabled \n", .{result1});
+
+    const result2 = try parseMuls(buffer, true);
+    print("The parsed result is: {d} with mul Do's enabled \n", .{result2});
 }
 
-fn parseMuls(input: []const u8) !i64 {
+fn parseMuls(input: []const u8, enable_dos: bool) !i64 {
     var mulEnabled: bool = true;
     var position: u32 = 0;
     var result: i64 = 0;
@@ -61,12 +64,16 @@ fn parseMuls(input: []const u8) !i64 {
                     }
                 }
             }
-        } else if (eql(u8, input[position .. position + 4], "do()")) {
-            mulEnabled = true;
-            position += 4;
-        } else if (eql(u8, input[position .. position + 7], "don't()")) {
-            mulEnabled = false;
-            position += 7;
+        } else if (enable_dos == true) {
+            if (eql(u8, input[position .. position + 4], "do()")) {
+                mulEnabled = true;
+                position += 4;
+            } else if (eql(u8, input[position .. position + 7], "don't()")) {
+                mulEnabled = false;
+                position += 7;
+            } else {
+                position += 1;
+            }
         } else {
             position += 1;
         }
@@ -78,12 +85,16 @@ test "test part 1" {
     const input: []const u8 = "xmul(2,4)%&mul[3,7]!@^do_not_mul(5,5)+mul(32,64]then(mul(11,8)mul(8,5))";
     print("Working on input: {s} \n", .{input});
 
-    try std.testing.expectEqual(161, try parseMuls(input));
+    const result = try parseMuls(input, false);
+    print("{d} \n", .{result});
+    try std.testing.expectEqual(161, result);
 }
 
 test "test part 2" {
     const input: []const u8 = "xmul(2,4)&mul[3,7]!^don't()_mul(5,5)+mul(32,64](mul(11,8)undo()?mul(8,5))";
     print("Working on input: {s} \n", .{input});
 
-    try std.testing.expectEqual(48, try parseMuls(input));
+    const result = try parseMuls(input, true);
+    print("{d} \n", .{result});
+    try std.testing.expectEqual(48, result);
 }
