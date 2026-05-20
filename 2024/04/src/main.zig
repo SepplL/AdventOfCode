@@ -13,17 +13,29 @@ pub fn main() !void {
     const file = try std.fs.cwd().openFile("input.txt", .{});
     defer file.close();
 
+    var timer = try std.time.Timer.start();
+    var sum1: i64 = 0;
+    var sum2: i64 = 0;
+    const iterations: usize = 10000;
+
     // Read file into buffer
     const stat = try file.stat();
     const buffer = try file.readToEndAlloc(allocator, stat.size);
     defer allocator.free(buffer);
 
     // print("Buffer {s}", .{buffer});
-    const result = try parse_xmas(buffer);
-    print("The parsed result is: {d} \n", .{result});
+    for (0..iterations) |_| {
+        sum1 += try parse_xmas(buffer);
+        sum2 += try parse_x_mas(buffer);
+    }
 
-    const result2 = try parse_x_mas(buffer);
-    print("The parsed result for part 2 (X-MAS'es) is: {d} \n", .{result2});
+    const elapsed = timer.read();  // time in ns
+    const per_run = elapsed / iterations;
+
+    print("The parsed result is: {d} \n", .{@divTrunc(sum1, iterations)});
+    print("The parsed result for part 2 (X-MAS'es) is: {d} \n", .{@divTrunc(sum2, iterations)});
+    print("Total elapsed time: {d} ns\n", .{elapsed});
+    print("per run: {d} ns\n", .{per_run});
 }
 
 fn parse_xmas(input: []const u8) !i64 {
@@ -34,58 +46,53 @@ fn parse_xmas(input: []const u8) !i64 {
     const lines: usize = input.len / stride_length;
     const chars_per_line: usize = stride_length - 1;
 
-    print("len of input: {d} \n", .{input.len});
-    print("chars per line: {d} \n", .{chars_per_line});
-    print("number of lines: {d} \n", .{lines});
+    // print("len of input: {d} \n", .{input.len});
+    // print("chars per line: {d} \n", .{chars_per_line});
+    // print("number of lines: {d} \n", .{lines});
 
     // search for: horizontal forwards and backwards
     var line: usize = 0;
     var pos: usize = 0;
 
+    const xmas: u32 = @bitCast([4]u8{ 'X','M','A','S' });
+    const samx: u32 = @bitCast([4]u8{ 'S','A','M','X' });
+
     while (line < lines) {
+        const row: usize = line * stride_length;
         while (pos < chars_per_line - 3) {
-            const index: usize = line * stride_length + pos;
+            const ind: usize = row + pos;
+            const word: u32 = @bitCast(input[ind ..][0 .. 4].*);
             // print("testing horizontal word: {s} \n", .{input[index .. index + 4]});
-            if (eql(u8, input[index .. index + 4], "XMAS")) {
-                result += 1;
-            } else if (eql(u8, input[index .. index + 4], "SAMX")) {
-                result += 1;
-            }
+            if (word == xmas or word == samx) result += 1;
 
             pos += 1;
         }
         line += 1;
         pos = 0;
     }
-    print("result after horizontal search: {d} \n", .{result});
+    // print("result after horizontal search: {d} \n", .{result});
 
     // search for: vertical upwards and downwards
     line = 0;
     pos = 0;
     while (pos < chars_per_line) {
         while (line < lines - 3) {
-            var indices: [4]usize = undefined;
-            for (0 .. 4) |i| {
-                indices[i] = (line + i) * stride_length + pos;
-            }
-            var word: [4]u8 = undefined;
+            const ind: usize = line * stride_length + pos;
+            const word: u32 =
+                (@as(u32, input[ind + 0 * stride_length]) << 0) |
+                (@as(u32, input[ind + 1 * stride_length]) << 8) |
+                (@as(u32, input[ind + 2 * stride_length]) << 16) |
+                (@as(u32, input[ind + 3 * stride_length]) << 24);
 
-            for (indices, 0..) |index, word_index| {
-                word[word_index] = input[index];
-            }
             // print("testing vertical word: {s} \n", .{word});
-            if (eql(u8, &word, "XMAS")) {
-                result += 1;
-            } else if (eql(u8, &word, "SAMX")) {
-                result += 1;
-            }
+            if (word == xmas or word == samx) result += 1;
 
             line += 1;
         }
         pos += 1;
         line = 0;
     }
-    print("result after vertical search: {d} \n", .{result});
+    // print("result after vertical search: {d} \n", .{result});
 
     // search for: diagonal upper left to lower right and upper right to lower left
     line = 0;
@@ -94,45 +101,33 @@ fn parse_xmas(input: []const u8) !i64 {
         while (line < lines - 3) {
 
             // upper left -> lower right
-            var indices: [4]usize = undefined;
-            for (0..4) |i| {
-                indices[i] = (line + i) * stride_length + pos + i;
-            }
-            var word: [4]u8 = undefined;
+            const ind: usize = line * stride_length + pos;
+            const word1: u32 =
+                (@as(u32, input[ind + 0 * stride_length]) << 0) |
+                (@as(u32, input[ind + 1 * (stride_length + 1)]) << 8) |
+                (@as(u32, input[ind + 2 * (stride_length + 1)]) << 16) |
+                (@as(u32, input[ind + 3 * (stride_length + 1)]) << 24);
 
-            for (indices, 0..) |index, word_index| {
-                word[word_index] = input[index];
-            }
             // print("testing vertical word: {s} \n", .{word});
-            if (eql(u8, &word, "XMAS")) {
-                result += 1;
-            } else if (eql(u8, &word, "SAMX")) {
-                result += 1;
-            }
+            if (word1 == xmas or word1 == samx) result += 1;
 
             // upper right -> lower left
-            indices = undefined;
-            for (0..4) |i| {
-                indices[i] = (line + i) * stride_length + pos + 3 - i;
-            }
-            word = undefined;
+            const idx: usize = line * stride_length + pos + 3;
+            const word2: u32 =
+                (@as(u32, input[idx + 0 * stride_length]) << 0) |
+                (@as(u32, input[idx + 1 * (stride_length - 1)]) << 8) |
+                (@as(u32, input[idx + 2 * (stride_length - 1)]) << 16) |
+                (@as(u32, input[idx + 3 * (stride_length - 1)]) << 24);
 
-            for (indices, 0..) |index, word_index| {
-                word[word_index] = input[index];
-            }
             // print("testing vertical word: {s} \n", .{word});
-            if (eql(u8, &word, "XMAS")) {
-                result += 1;
-            } else if (eql(u8, &word, "SAMX")) {
-                result += 1;
-            }
+            if (word2 == xmas or word2 == samx) result += 1;
 
             line += 1;
         }
         pos += 1;
         line = 0;
     }
-    print("result after diagonal search: {d} \n", .{result});
+    // print("result after diagonal search: {d} \n", .{result});
     return result;
 }
 
@@ -146,37 +141,29 @@ fn parse_x_mas(input: []const u8) !i64 {
 
     // search for: x-mas diagonal patterns of overlapping mas only
     // search for: diagonal upper left to lower right and upper right to lower left
-    var line: usize = 0;
-    var pos: usize = 0;
+    // only search for initial "A" in space 1 .. max - 1 for lines and chars
+    var line: usize = 1;
+    var pos: usize = 1;
 
-    while (pos < chars_per_line - 2) {
-        while (line < lines - 2) {
+    const mas: u24 = @bitCast([3]u8{ 'M','A','S' });
+    const sam: u24 = @bitCast([3]u8{ 'S','A','M' });
+    while (pos < chars_per_line - 1) {
+        while (line < lines - 1) {
 
-            // upper left -> lower right
-            var indices: [3]usize = undefined;
-            for (0..3) |i| {
-                indices[i] = (line + i) * stride_length + pos + i;
-            }
-            var word: [3]u8 = undefined;
+            const ind: usize = line * stride_length + pos;
+            if (input[ind] == 'A') {
+                // found necessary middle "A" for X-MAS
+                // check if cross pattern matches in 1 step
 
-            for (indices, 0..) |index, word_index| {
-                word[word_index] = input[index];
-            }
-            // print("testing vertical word: {s} \n", .{word});
-            if (eql(u8, &word, "MAS") or eql(u8, &word, "SAM")) {
-
-                // upper right -> lower left
-                indices = undefined;
-                for (0..3) |i| {
-                    indices[i] = (line + i) * stride_length + pos + 2 - i;
-                }
-                word = undefined;
-
-                for (indices, 0..) |index, word_index| {
-                    word[word_index] = input[index];
-                }
-                // print("testing vertical word: {s} \n", .{word});
-                if (eql(u8, &word, "MAS") or eql(u8, &word, "SAM")) {
+                const word1: u24 =
+                    (@as(u24, input[ind - 1 * (stride_length + 1)]) << 0) |
+                    (@as(u24, input[ind + 0 * (stride_length + 1)]) << 8) |
+                    (@as(u24, input[ind + 1 * (stride_length + 1)]) << 16);
+                const word2: u24 =
+                    (@as(u24, input[ind - 1 * (stride_length - 1)]) << 0) |
+                    (@as(u24, input[ind + 0 * (stride_length - 1)]) << 8) |
+                    (@as(u24, input[ind + 1 * (stride_length - 1)]) << 16);
+                if ((word1 == mas or word1 == sam) and (word2 == mas or word2 == sam)) {
                     result += 1;
                 }
             }
@@ -184,7 +171,7 @@ fn parse_x_mas(input: []const u8) !i64 {
             line += 1;
         }
         pos += 1;
-        line = 0;
+        line = 1;
     }
     return result;
 }
