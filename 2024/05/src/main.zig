@@ -168,21 +168,7 @@ fn parse_printing_rules_part2(input: []const u8, verbose: bool) !usize {
         }
         if (legal_order == false) {
             // reorder numbers based on rules
-            var swapped: bool = false;
-            while (swapped == false) {
-                var internal_swap: bool = false;
-                var i: usize = 0;
-
-                while (i < count - 1) {
-                    if (rule_table[nums[i + 1]][nums[i]] == true) {
-                        // swap entries
-                        std.mem.swap(usize, &nums[i], &nums[i + 1]);
-                        internal_swap = true;
-                    }
-                    i += 1;
-                }
-                if (internal_swap == false) swapped = true;
-            }
+            std.sort.insertion(usize, nums[0 .. count], &rule_table, lessThan);
             // print("corrected order for printing: {any} \n", .{nums});
 
             // add middle number to result
@@ -191,6 +177,11 @@ fn parse_printing_rules_part2(input: []const u8, verbose: bool) !usize {
         }
     }
     return result;
+}
+
+fn lessThan(rule_table: *const [101][101]bool, a:usize, b:usize) bool {
+    // print("{d} ? {d}\n", .{a, b});
+    return rule_table[a][b];
 }
 
 test "day 05 part 01" {
