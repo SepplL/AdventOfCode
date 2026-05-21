@@ -75,9 +75,10 @@ fn parse_xmas(input: []const u8) !i64 {
     // search for: vertical upwards and downwards
     line = 0;
     pos = 0;
-    while (pos < chars_per_line) {
-        while (line < lines - 3) {
-            const ind: usize = line * stride_length + pos;
+    while (line < lines - 3) {
+        const row: usize = line * stride_length;
+        while (pos < chars_per_line) {
+            const ind: usize = row + pos;
             const word: u32 =
                 (@as(u32, input[ind + 0 * stride_length]) << 0) |
                 (@as(u32, input[ind + 1 * stride_length]) << 8) |
@@ -87,10 +88,10 @@ fn parse_xmas(input: []const u8) !i64 {
             // print("testing vertical word: {s} \n", .{word});
             if (word == xmas or word == samx) result += 1;
 
-            line += 1;
+            pos += 1;
         }
-        pos += 1;
-        line = 0;
+        line += 1;
+        pos = 0;
     }
     // print("result after vertical search: {d} \n", .{result});
 
