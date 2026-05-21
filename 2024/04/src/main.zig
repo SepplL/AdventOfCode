@@ -97,11 +97,12 @@ fn parse_xmas(input: []const u8) !i64 {
     // search for: diagonal upper left to lower right and upper right to lower left
     line = 0;
     pos = 0;
-    while (pos < chars_per_line - 3) {
-        while (line < lines - 3) {
+    while (line < lines - 3) {
+        const row = line * stride_length;
+        while (pos < chars_per_line - 3) {
 
             // upper left -> lower right
-            const ind: usize = line * stride_length + pos;
+            const ind: usize = row + pos;
             const word1: u32 =
                 (@as(u32, input[ind + 0 * stride_length]) << 0) |
                 (@as(u32, input[ind + 1 * (stride_length + 1)]) << 8) |
@@ -112,7 +113,7 @@ fn parse_xmas(input: []const u8) !i64 {
             if (word1 == xmas or word1 == samx) result += 1;
 
             // upper right -> lower left
-            const idx: usize = line * stride_length + pos + 3;
+            const idx: usize = row + pos + 3;
             const word2: u32 =
                 (@as(u32, input[idx + 0 * stride_length]) << 0) |
                 (@as(u32, input[idx + 1 * (stride_length - 1)]) << 8) |
@@ -122,10 +123,10 @@ fn parse_xmas(input: []const u8) !i64 {
             // print("testing vertical word: {s} \n", .{word});
             if (word2 == xmas or word2 == samx) result += 1;
 
-            line += 1;
+            pos += 1;
         }
-        pos += 1;
-        line = 0;
+        line += 1;
+        pos = 0;
     }
     // print("result after diagonal search: {d} \n", .{result});
     return result;
@@ -147,18 +148,20 @@ fn parse_x_mas(input: []const u8) !i64 {
 
     const diag_xor = 'M' ^ 'S';
     const diag_or = 'M' | 'S';
-    while (pos < chars_per_line - 1) {
-        while (line < lines - 1) {
+    while (line < lines - 1) {
+        const row = line * stride_length;
+        const row_up = row - stride_length;
+        const row_down = row + stride_length;
+        while (pos < chars_per_line - 1) {
 
-            const ind: usize = line * stride_length + pos;
-            if (input[ind] == 'A') {
+            if (input[row + pos] == 'A') {
                 // found necessary middle "A" for X-MAS
                 // check if cross pattern matches in 1 step
 
-                const top_left = input[ind - stride_length - 1];
-                const top_right = input[ind - stride_length + 1];
-                const bot_left = input[ind + stride_length - 1];
-                const bot_right = input[ind + stride_length + 1];
+                const top_left = input[row_up + pos - 1];
+                const top_right = input[row_up + pos + 1];
+                const bot_left = input[row_down + pos - 1];
+                const bot_right = input[row_down + pos + 1];
                 if ((top_left ^ bot_right) == diag_xor and
                     (top_right ^ bot_left) == diag_xor and
                     (top_left | bot_right) == diag_or and
@@ -167,10 +170,10 @@ fn parse_x_mas(input: []const u8) !i64 {
                     result += 1;
                 }
             }
-            line += 1;
+            pos += 1;
         }
-        pos += 1;
-        line = 1;
+        line += 1;
+        pos = 1;
     }
     return result;
 }
