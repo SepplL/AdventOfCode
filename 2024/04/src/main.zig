@@ -145,8 +145,8 @@ fn parse_x_mas(input: []const u8) !i64 {
     var line: usize = 1;
     var pos: usize = 1;
 
-    const mas: u24 = @bitCast([3]u8{ 'M','A','S' });
-    const sam: u24 = @bitCast([3]u8{ 'S','A','M' });
+    const diag_xor = 'M' ^ 'S';
+    const diag_or = 'M' | 'S';
     while (pos < chars_per_line - 1) {
         while (line < lines - 1) {
 
@@ -155,19 +155,18 @@ fn parse_x_mas(input: []const u8) !i64 {
                 // found necessary middle "A" for X-MAS
                 // check if cross pattern matches in 1 step
 
-                const word1: u24 =
-                    (@as(u24, input[ind - 1 * (stride_length + 1)]) << 0) |
-                    (@as(u24, input[ind + 0 * (stride_length + 1)]) << 8) |
-                    (@as(u24, input[ind + 1 * (stride_length + 1)]) << 16);
-                const word2: u24 =
-                    (@as(u24, input[ind - 1 * (stride_length - 1)]) << 0) |
-                    (@as(u24, input[ind + 0 * (stride_length - 1)]) << 8) |
-                    (@as(u24, input[ind + 1 * (stride_length - 1)]) << 16);
-                if ((word1 == mas or word1 == sam) and (word2 == mas or word2 == sam)) {
+                const top_left = input[ind - stride_length - 1];
+                const top_right = input[ind - stride_length + 1];
+                const bot_left = input[ind + stride_length - 1];
+                const bot_right = input[ind + stride_length + 1];
+                if ((top_left ^ bot_right) == diag_xor and
+                    (top_right ^ bot_left) == diag_xor and
+                    (top_left | bot_right) == diag_or and
+                    (top_right | bot_left) == diag_or)
+                {
                     result += 1;
                 }
             }
-
             line += 1;
         }
         pos += 1;
